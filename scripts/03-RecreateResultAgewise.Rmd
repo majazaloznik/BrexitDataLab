@@ -1,0 +1,186 @@
+---
+author: "Maja Zalo&#x17e;nik"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+
+---
+```{r setup, echo=FALSE, message=FALSE, warning = FALSE}
+require(knitr)
+require(dplyr)
+require(tidyr)
+load("../prepared.data.Rdata")
+opts_chunk$set(warning=FALSE, message=FALSE)
+options(scipen=999, digits=4)
+
+```
+
+OK, so we have the results of the referendum:
+
+```{r, echo=FALSE}
+results.orig %>%
+  summarise(registered.count=sum(Electorate),
+            remain.count=sum(Remain),
+            leave.count=sum(Leave)) %>%
+  mutate(turnout.count = remain.count + leave.count,
+         turnout.prop = turnout.count/registered.count,
+         remain.prop = remain.count/turnout.count,
+         leave.prop = leave.count/turnout.count) -> results.summary
+```
+```{r, digits=2}
+results.summary
+```
+
+Then we have the following data to try to recreate the age disaggregated voting behaviour: 
+
+* UK popultion age distribution data (by single year, group into 6 age groups)
+* voter register completeness data (2014 - 6 age groups)
+* turnout by age group estimates (yougov from  skynews tweet - 6 age groups)
+* results by age group estimates (Lord Ashcroft)
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# group UK data into 7 groups
+UK.population.orig %>% 
+  gather(age, count, 4:94) %>%
+  mutate(age=as.numeric(substring(age, 2)),
+         age.group = cut(age, c(17, 19, 24, 34, 44, 54, 64, 91))) %>%
+  select(age, age.group,count) ->
+ UK.population.tidy 
+
+UK.population.tidy %>%
+  select(age.group, count) %>%
+  group_by(age.group) %>%
+  summarise(count = sum(count)) %>%
+  filter(!is.na(age.group)) %>%
+  mutate(age.group = as.character(completeness.orig$age.group) )->
+  UK.population.7age.groups
+# group completeness data into 6 groups
+full_join(UK.population.7age.groups,
+          completeness.orig) %>%
+  mutate(registered.count = count*registration.prop,
+    age.group = c("18-24", "18-24",
+      UK.population.7age.groups$age.group[3:7])) %>%
+  group_by(age.group) %>%
+  summarise(count = sum(count),
+            registered.count= sum(registered.count),
+    registered.proportion = registered.count/count) %>%
+  full_join(turnout.orig) %>%
+  full_join((results.LA.orig)) -> all.6age.groups
+```
+
+```{r, echo=FALSE, results=TRUE}
+data.frame(all.6age.groups)
+```
+
+
+So first we see how well this data can recreate the actual results. 
+```{r, echo=FALSE}
+FunCalculateResult <- function(all.6age.groups) {
+## turount 
+all.6age.groups %>%
+  mutate(turnout.count = registered.count*turnout.prop) %>%
+  summarise(count = sum(count), turnout.count = sum(turnout.count),
+            registered.count = sum(registered.count)) %>%
+  mutate(turnout.prop = turnout.count/registered.count) -> 
+  total.turnout
+## result of referendum
+all.6age.groups %>%
+  mutate(vote.remain = registered.count*turnout.prop * remain.prop,
+         vote.leave = registered.count*turnout.prop * (1-remain.prop)) %>%
+  summarise(remain.count = sum(vote.remain),
+            leave.count = sum(vote.leave)) %>%
+  cbind(total.turnout) %>%
+  mutate(remain.prop=remain.count/turnout.count,
+         leave.prop = leave.count/turnout.count) -> estimates.summary
+return(estimates.summary)}
+estimates.summary <- FunCalculateResult(all.6age.groups)
+```
+
+```{r, echo=FALSE, results=TRUE}
+rbind(results.summary, estimates.summary[-3]) %>%
+  mutate(data.source=c( "actual","recreation")) %>%
+  select(8,1,4,5,2,3,6,7) -> compare.results
+compare.results
+```
+
+OK, so there's about 2.3 million voters missing, registerred since 2014. But the turnout and results are very very close, slightly overestimating the turnout (about 1 percentage point) and slightly overestimating leave (by about .6 point). 
+
+So we need to add new registrations, but there is no dtat for that, only nice open access and age disaggregated numbers of *applications to register*, but not successful registrations. apparently a lot are 'just in case' registrations of people who are already on the register. And the level of redundancy presumably varies by age but how is not clear. There have been 18 million applications registered since 2014, so clearly most of them were not valid. 
+
+But we'll take the most recent 2.3 million registrations and add them to the register, to get closer to the true number of voters. 
+
+```{r, echo=FALSE, results=TRUE}
+# group new registrtions into 6 groups
+registrations.grouped.orig %>%
+mutate(gr = c(0,0,1,2,3,4,5,6,6,7)) %>% 
+filter(!gr %in% c(0,7)) %>%
+group_by(gr) %>%
+summarise(count=sum(sum)) %>%
+ungroup() -> registrations.6age.groups
+all.6age.groups.new <- all.6age.groups
+all.6age.groups.new$registered.count <- all.6age.groups$registered.count + registrations.6age.groups$count
+estimates.summary <- FunCalculateResult(all.6age.groups.new)
+```
+
+```{r, echo=FALSE, results=TRUE}
+rbind(results.summary, estimates.summary[-3]) %>%
+  mutate(data.source=c( "actual","recreation2")) %>%
+  select(8,1,4,5,2,3,6,7) -> compare.results
+compare.results
+```
+
+Now only a slight manual readjustment of the turnout estimates, and we can match the actual results with the model:
+```{r, echo=FALSE, results=TRUE}
+all.6age.groups.new$turnout.prop <- c(40, 62, 72.5, 77, 81, 83)/100
+estimates.summary <- FunCalculateResult(all.6age.groups.new)
+rbind(results.summary, estimates.summary[-3]) %>%
+  mutate(data.source=c( "actual","recreation3")) %>%
+  select(8,1,4,5,2,3,6,7) -> compare.results
+compare.results
+```
+
+So the followihg is then a realistic model of the age disaggregated voting on the referendum based on the best available data:
+```{r, echo=FALSE, results=TRUE}
+all.6age.groups.best <- all.6age.groups.new
+all.6age.groups.best$registered.proportion <-
+  all.6age.groups.best$registered.count/all.6age.groups.best$count
+data.frame(all.6age.groups.best[,c(1,4,5,6)])
+```
+
+```{r, echo=FALSE, resutls = TRUE}
+all.6age.groups.best.plot <- 
+  all.6age.groups.best %>%
+  mutate(not.reg=1-registered.proportion,
+  turnout.abs = turnout.prop*registered.proportion,
+  not.turnout.abs = registered.proportion-turnout.abs,
+  remain.abs= turnout.abs*remain.prop,
+  leave.abs = turnout.abs-remain.abs) %>%
+  select(age.group, count, not.reg, not.turnout.abs,remain.abs, leave.abs)
+source("04-Plot.R")
+FunBestPlot(all.6age.groups.best)
+
+
+```
+
+OK, now let's add the life expectancy
+```{r, echo=FALSE, results = TRUE}
+UK.life.exp.orig$ex[91] <- mean(UK.life.exp.orig[UK.life.exp.orig$X.x>=90,6])
+inner_join(UK.population.tidy, UK.life.exp.orig, by=c("age"="X.x"))%>%
+  select(age, count, ex) %>%
+  filter(age>=18)  %>%
+  mutate(years.left = count*ex,
+         age.group = cut(age, c(17,  24, 34, 44, 54, 64, 91))) %>%
+  group_by(age.group) %>%
+  summarise(years.left=sum(years.left)) -> all.6age.groups.best.LE
+all.6age.groups.best$count <- all.6age.groups.best.LE$years.left
+source("04-Plot.R")
+# barplot(t(as.matrix(all.6age.groups.best.plot[,3:6])),
+#        width=all.6age.groups.best.LE$years.left, horiz=TRUE,
+#        names.arg = all.6age.groups.best.plot$age.group,
+#        col=c("black", "gray", "yellow", "blue"))
+FunBestPlot(all.6age.groups.best)
+
+```

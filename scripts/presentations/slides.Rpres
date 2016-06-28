@@ -1,0 +1,146 @@
+#Brexit
+========================================================
+## Best estimates of age-specific voting behaviour
+
+<br>
+
+*Maja Založnik*
+
+29.6.2016
+
+Motivation
+========================================================
+
+![How it all began](figures/comment.png)
+
+
+
+Internet seems ahead of me
+========================================================
+
+![You Trend Tweet 23.6.2016](figures/twittertable.jpg)
+
+[You Trend Tweet 23.6.2016](https://twitter.com/you_trend/status/746114516308606976/photo/1?ref_src=twsrc%5Etfw)
+
+Internet seems ahead of me
+========================================================
+
+![Medieval Problems Tweet 24.6.2016](figures/meme.png)
+
+[Medieval Problems Tweet 24.6.2016](https://twitter.com/Medieval_Probs/status/746277160692887553)
+
+Where is the data? Voting
+========================================================
+incremental: true
+
+<div align="center">
+<img src="figures/lashcroft.png" width=800 >
+</div>
+
+[Lord Ashcroft Post Vote Poll 24.6.2016](http://lordashcroftpolls.com/2016/06/how-the-united-kingdom-voted-and-why/#more-14746)
+
+Where is the data? Turnout
+========================================================
+
+<div align="center">
+<img src="figures/turnout.jpg" height=400 >
+</div>
+
+[Sky data Tweet 25.6.2916 (YouGov poll?)](https://twitter.com/SkyData/status/746700869656256512)
+
+
+Where is the data? Registration
+========================================================
+
+<div align="center">
+<img src="figures/registration.png" height=400 >
+</div>
+
+[The quality of the 2014 electoral registers in Great Britain](http://www.electoralcommission.org.uk/__data/assets/pdf_file/0005/169889/Completeness-and-accuracy-of-the-2014-electoral-registers-in-Great-Britain.pdf)
+
+
+Data Summary
+========================================================
+incremental: true
+
+* Voting -- 6 age groups -- Estimate from poll
+* Turnout -- 6 age groups -- Estimate from (different) poll
+* Registration -- 7 age groups -- Electoral comission (2014)
+* Population structure -- all ages -- ONS (2015)
+* Life expectancy -- all ages -- ONS (2012-14)
+
+<hr>
+
+* 2.3 million voters missing!
+* [Performance: Voter Registration dashboard](https://www.gov.uk/performance/register-to-vote)
+
+New registrations added anyway
+========================================================
+```{r, echo=FALSE, results=TRUE}
+source("plots.R")
+
+barplot(t(as.matrix(cbind(xx$registered.prop, xx$registered.prop.dif))),
+        names.arg = xx$age.group, ylim=c(0,1),
+        col=c("black", "black"), density=c(40,20),
+        main = "Voter Registration Levels")
+
+```
+
+Voter turnout tweaked
+========================================================
+```{r, echo=FALSE, results=TRUE}
+barplot(t(as.matrix(cbind(xx$turnout.prop, xx$turnout.prop.dif))),
+        names.arg = xx$age.group, ylim=c(0,1),
+        col=c("gray", "gray"), density=c(40,20),
+        main = "Voter Turnout Levels")
+
+
+```
+
+Bringing it all together: 
+========================================================
+```{r, echo=FALSE, results=TRUE, fig.width=8,fig.height=4.5}
+
+# add the new registrations, recalculate reg.prop and tweak turnout.prop:
+all.6age.groups %>%
+  mutate(registered.count= registered.count + registrations.6age.groups$count,
+         registered.prop = registered.count / count,
+         turnout.prop = c(40, 62, 72.5, 77, 81, 83)/100) %>%
+  select(-registered.count) ->
+  all.6age.groups 
+
+# estimates.summary <- FunCalculateResult(all.6age.groups)
+# ## compare with results 
+# left_join(gather(estimates.summary, var, value), 
+#           gather(results.summary, var, value),
+#           by=c("var"="var"))
+# check plot:
+
+
+# OK, now let's add the life expectancy
+UK.life.exp.orig$ex[91] <- mean(UK.life.exp.orig[UK.life.exp.orig$X.x>=90,6])
+inner_join(UK.population.tidy, UK.life.exp.orig, by=c("age"="X.x"))%>%
+  select(age, count, ex) %>%
+  filter(age>=18)  %>%
+  mutate(years.left = count*ex,
+         age.group = cut(age, c(17,  24, 34, 44, 54, 64, 91))) %>%
+  group_by(age.group) %>%
+  summarise(years.left=sum(years.left)) ->  life.expectancy
+all.6age.groups$years.left <- life.expectancy$years.left
+
+rm(life.expectancy, 
+   registrations.6age.groups,
+   registrations.grouped.orig,
+   results.orig,
+   results.LA.orig,
+   turnout.orig,
+   UK.life.exp.orig)
+# FunBestPlot(all.6age.groups, base = "lexp")
+# estimates.summary <- FunCalculateResult(all.6age.groups, base = "lexp")
+
+# FunBestPlot(all.6age.groups)
+FunBestPlot(all.6age.groups, base="count")
+
+```
+
+[shiny](https://maja.shinyapps.io/brexit/)
