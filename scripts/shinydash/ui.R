@@ -45,11 +45,16 @@ body <- dashboardBody(
                      #      title = "Plot", status = "primary", solidHeader = TRUE),
                      box(  width = NULL, plotOutput("plot",height="400px"), collapsible = TRUE,
                            title = "Plot", status = "primary", solidHeader = TRUE),
-                     radioButtons("base", "Vote weight", 
-                                  c("One person" = "count",
-                                    "One year of life remaining" ="lexp"),
-                                  selected = NULL, inline = FALSE,
-                                  width = NULL)
+                     box(  radioButtons("base", "Vote weight", 
+                                        c("One person" = "count",
+                                          "One year of life remaining" ="lexp"),
+                                        selected = NULL, inline = FALSE,
+                                        width = NULL),
+                           a("[github repo]", href = "https://github.com/majazaloznik/BrexitDataLab"),
+                           width = NULL, 
+                           collapsible = TRUE, collapsed = TRUE,
+                           title = "Bonus", status = "primary", solidHeader = TRUE)
+                    
               ))
     )
   )
