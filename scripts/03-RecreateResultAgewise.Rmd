@@ -66,7 +66,7 @@ full_join(UK.population.7age.groups,
   group_by(age.group) %>%
   summarise(count = sum(count),
             registered.count= sum(registered.count),
-    registered.proportion = registered.count/count) %>%
+    registered.prop = registered.count/count) %>%
   full_join(turnout.orig) %>%
   full_join((results.LA.orig)) -> all.6age.groups
 ```
@@ -145,7 +145,7 @@ compare.results
 So the followihg is then a realistic model of the age disaggregated voting on the referendum based on the best available data:
 ```{r, echo=FALSE, results=TRUE}
 all.6age.groups.best <- all.6age.groups.new
-all.6age.groups.best$registered.proportion <-
+all.6age.groups.best$registered.propo <-
   all.6age.groups.best$registered.count/all.6age.groups.best$count
 data.frame(all.6age.groups.best[,c(1,4,5,6)])
 ```
@@ -153,13 +153,13 @@ data.frame(all.6age.groups.best[,c(1,4,5,6)])
 ```{r, echo=FALSE, resutls = TRUE}
 all.6age.groups.best.plot <- 
   all.6age.groups.best %>%
-  mutate(not.reg=1-registered.proportion,
-  turnout.abs = turnout.prop*registered.proportion,
-  not.turnout.abs = registered.proportion-turnout.abs,
+  mutate(not.reg=1-registered.prop,
+  turnout.abs = turnout.prop*registered.prop,
+  not.turnout.abs = registered.prop-turnout.abs,
   remain.abs= turnout.abs*remain.prop,
   leave.abs = turnout.abs-remain.abs) %>%
   select(age.group, count, not.reg, not.turnout.abs,remain.abs, leave.abs)
-source("04-Plot.R")
+source("04-Functions.R")
 FunBestPlot(all.6age.groups.best)
 
 
@@ -176,7 +176,7 @@ inner_join(UK.population.tidy, UK.life.exp.orig, by=c("age"="X.x"))%>%
   group_by(age.group) %>%
   summarise(years.left=sum(years.left)) -> all.6age.groups.best.LE
 all.6age.groups.best$count <- all.6age.groups.best.LE$years.left
-source("04-Plot.R")
+source("04-Functions.R")
 # barplot(t(as.matrix(all.6age.groups.best.plot[,3:6])),
 #        width=all.6age.groups.best.LE$years.left, horiz=TRUE,
 #        names.arg = all.6age.groups.best.plot$age.group,
