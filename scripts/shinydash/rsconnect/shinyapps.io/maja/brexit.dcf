@@ -2,8 +2,8 @@ name: brexit
 account: maja
 server: shinyapps.io
 appId: 111006
-bundleId: 491457
+bundleId: 491981
 url: https://maja.shinyapps.io/brexit/
-when: 1467120679.30896
+when: 1467156842.26028
 asMultiple: FALSE
 asStatic: FALSE

@@ -15,14 +15,14 @@ Motivation
 
 
 
-Internet seems ahead of me
+Internet was ahead of me
 ========================================================
 
 ![You Trend Tweet 23.6.2016](figures/twittertable.jpg)
 
 [You Trend Tweet 23.6.2016](https://twitter.com/you_trend/status/746114516308606976/photo/1?ref_src=twsrc%5Etfw)
 
-Internet seems ahead of me
+Internet was ahead of me
 ========================================================
 
 ![Medieval Problems Tweet 24.6.2016](figures/meme.png)
@@ -65,7 +65,7 @@ incremental: true
 
 * Voting -- 6 age groups -- Estimate from poll
 * Turnout -- 6 age groups -- Estimate from (different) poll
-* Registration -- 7 age groups -- Electoral comission (2014)
+* Registration -- 7 age groups -- Electoral commission (2014)
 * Population structure -- all ages -- ONS (2015)
 * Life expectancy -- all ages -- ONS (2012-14)
 
